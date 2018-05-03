@@ -12,8 +12,8 @@ public class Engine : MonoBehaviour {
 		int[] sizes = { 2, 3, 8, 4, 7, 6, 3 };
 		Network myNetwork = new Network (sizes);
 		float[] a = { 1.2f, 2.3f };
-		float[] a_prime = myNetwork.feedforward (a);
-		myNetwork.backprop (a, a);
+		float[] o = { 2.5f, 1.1f, 3.4f };
+		myNetwork.backprop (a, o);
 	}
 	
 	// Update is called once per frame
@@ -40,29 +40,29 @@ public class Engine : MonoBehaviour {
 		
 	}
 
-	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
-	 *																													 *
-	 *																													 *
-	 *																													 *
-	 *											Artificial Neural Network												 *
-	 *																													 *
-	 *																													 *
-	 *				This Artificial Neural Network is implemented based on Michael A. Nielsen's book:					 *
-	 *										"Neural Networks and Deep Learning"											 *
-	 *																													 *
-	 *				The purpose of this implementation is to help creating a Neural Network based artificial			 *
-	 *				intelligence for the game "Connect4" that will be demonstrated in a Machine Learning class			 *
-	 *				in California State University, Northridge (COMP 496-ML).											 *
-	 *																													 *
-	 *				The copyright of the code belongs to Shen Huang, and is writted in C# specificly for Unity,			 *
-	 *				which is the game engine used to implement the game that does not yet have many neural				 *
-	 *				networks implemented.																				 *
-	 *																					 								 *
-	 *																					 								 *
-	 *																					 		--- May 1, 2018			 *
-	 *																					 								 *
-	 *																					 								 *
-	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
+	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+	 *																										 *
+	 *																										 *
+	 *																										 *
+	 *									Artificial Neural Network											 *
+	 *																										 *
+	 *																										 *
+	 *		This Artificial Neural Network is implemented based on Michael A. Nielsen's book:				 *
+	 *								"Neural Networks and Deep Learning"										 *
+	 *																										 *
+	 *		The purpose of this implementation is to help creating a Neural Network based artificial		 *
+	 *		intelligence for the game "Connect4" that will be demonstrated in a Machine Learning class		 *
+	 *		in California State University, Northridge (COMP 496-ML).										 *
+	 *																										 *
+	 *		The copyright of the code belongs to Shen Huang, and is writted in C# specificly for Unity,		 *
+	 *		which is the game engine used to implement the game that does not yet have many neural			 *
+	 *		networks implemented.																			 *
+	 *																					 					 *
+	 *																					 					 *
+	 *																			 		--- May 1, 2018		 *
+	 *																					 					 *
+	 *																					 					 *
+	 * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
 	//Artificial Neural Network Class.
 
@@ -76,6 +76,9 @@ public class Engine : MonoBehaviour {
 		//is represented as biases[l - 1][j - 2],
 		//w[l][j][k] which is the weight from the jth neuron in layer l to the kth neuron in layer l + 1,
 		//is represented as weights[l - 1][j - 1][k - 1].
+		//This representation is different from the way Michael A. Nielsen implemented it inside his tutorial,
+		//this is because the libraries for matrix calculations in Unity is not as matured as in Python,
+		//corresponding changes has been made inside the code to adapt to this twitch.
 		public static float[][]		biases;
 		public static float[][][]	weights;
 		//Identical matricies to store necessary information for back propagation.
@@ -131,7 +134,7 @@ public class Engine : MonoBehaviour {
 			//Since the index of arraries starts at 0, biases starts at layer 2,
 			//Bias(Layer, Neuron) is represented as biases[Layer - 2][Neuron - 1].
 			float[][] b = new float[num_layers - 1][];
-			switch(method)
+			switch (method)
 			{
 				case 0:
 					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
@@ -167,9 +170,9 @@ public class Engine : MonoBehaviour {
 			//Method = 0: Returns a weight array of zeroes.
 			//Method = 1; Returns a weight array of random numbers in normal distribution.
 			//Since the index of arraries starts at 0, weights starts at layer 1,
-			//Weights(Layer, Neuron (From), Neuron (To)) is represented as weights[Layer - 1][Neuron (From) - 1][Neuron (To) - 1].
-			float[][][] w = new float[num_layers][][];
-			switch(method)
+			//Weights(Layer (From), Neuron (From), Neuron (To)) is represented as weights[Layer (From) - 1][Neuron (From) - 1][Neuron (To) - 1].
+			float[][][] w = new float[num_layers - 1][][];
+			switch (method)
 			{
 				case 0:
 					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
@@ -225,7 +228,8 @@ public class Engine : MonoBehaviour {
 		{
 			//Generates the output vector a' given the input vector a,
 			//where the activation vector a' in the new layer is calculated with:
-			//a' = sigmoid(sigma(wa + b)) with w, a and b as vectors in the previous layer.
+			//a' = sigmoid(sigma(z)) where z = w * a + b,
+			//with w, a and b as vectors in the previous layer.
 			for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
 			{
 				int nInputNeurons = sizes [layerIndex];
@@ -260,39 +264,83 @@ public class Engine : MonoBehaviour {
 			//Modifies nabla_b and nabla_w to represent the gradient for the cost function C_x.
 			nabla_b = generateBiases (0);
 			nabla_w = generateWeights (0);
-			//Feedforward using a' = sigmoid(sigma(wa + b)).
-			float[]		zs = new float[num_layers - 1];			//List to store all the z vectors, layer by layer.			
+			//Feedforward using a' = sigmoid(sigma(wa + b)),
+			//while keeping the activations for each layer.
+			float[][]	zs = new float[num_layers - 1][];		//List to store all the z vectors, layer by layer.			
 			float[][]	activations = generateNeurons (0);		//List to store all the other activations, layer by layer.
 			activations[0] = x;									//Initial activation equals to the input vector x.
 			for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
 			{
 				int nInputNeurons = sizes [layerIndex];
 				int nOutputNeurons = sizes [layerIndex + 1];
-				float[] a_prime = new float[nOutputNeurons];
+				float[] z = new float[nOutputNeurons];
 				for (int outputNeuronIndex = 0; outputNeuronIndex < nOutputNeurons; outputNeuronIndex++)
 				{
-					float z = 0;
+					float sum = 0;
 					for (int inputNeuronIndex = 0; inputNeuronIndex < nInputNeurons; inputNeuronIndex++)
 					{
-						z += weights [layerIndex] [inputNeuronIndex] [outputNeuronIndex] * activations [layerIndex] [inputNeuronIndex] + biases [layerIndex] [outputNeuronIndex];
+						sum += weights [layerIndex] [inputNeuronIndex] [outputNeuronIndex] * activations [layerIndex] [inputNeuronIndex] + biases [layerIndex] [outputNeuronIndex];
 					}
-					zs [layerIndex] = z;
-					activations [layerIndex + 1] [outputNeuronIndex] = MathLibrary.sigmoid (z);
+					z [outputNeuronIndex] = sum;
+					activations [layerIndex + 1] [outputNeuronIndex] = MathLibrary.sigmoid (z [outputNeuronIndex]);
 				}
+				zs [layerIndex] = z;
 			}
 			//Backward pass.
-
-
-
-
+			//Generate nabla_b and nabla_w for the first layer.
+			//delta of the first layer is calculated by:
+			//delta = dC/da * sigmoid (z), where for quadratic cost function:
+			//C = 1/2 * sigma(y - a)^2 -> dC/da = a - y.
+			float[] delta = new float[y.Length];
+			for (int index = 0; index < y.Length; index++)
+			{
+				delta [index] = (activations [num_layers - 1] [index] - y [index]) * MathLibrary.sigmoid_prime(zs [num_layers - 2] [index]);
+			}
+			nabla_b [num_layers - 2] = delta;
+			nabla_w [num_layers - 2] = calculate_nabla_w (activations [num_layers - 2], delta);
+			//Generate nabla_b and nabla_w for the rest of the layers.
+			for (int l = num_layers - 3; l >= 0; l--)
+			{
+				delta = calculate_delta (weights [l + 1], delta, zs [l]);
+				nabla_b [l] = delta;
+				nabla_w [l] = calculate_nabla_w (activations [l], delta);
+			}
 		}
 
-		public float[] cost_derivative()
+		public float[] calculate_delta (float[][] weights, float[] delta, float[] z)
 		{
-			int 
-			float[] delta = new float[sizes[sizes.Length - 1]];
+			//Returns a layer of the delta vector, where for this specific structure of w:
+			//delta[l] = (transpose(w[l]) * delta [l + 1]) * sigmoid_prime(z[l]).
+			int nInputNeurons = weights.Length;
+			int nOutputNeurons = weights [0].Length;
+			float[] new_delta = new float[nInputNeurons];
+			for (int inputNeuronIndex = 0; inputNeuronIndex < nInputNeurons; inputNeuronIndex++)
+			{
+				new_delta [inputNeuronIndex] = 0;
+				for (int outputNeuronIndex = 0; outputNeuronIndex < nOutputNeurons; outputNeuronIndex++)
+				{
+					new_delta [inputNeuronIndex] += weights [inputNeuronIndex] [outputNeuronIndex] * delta [outputNeuronIndex];
+				}
+				new_delta [inputNeuronIndex] *= MathLibrary.sigmoid_prime(z [inputNeuronIndex]);
+			}
+			return new_delta;
+		}
 
-
+		public float[][] calculate_nabla_w (float[] previous_activations, float[] delta)
+		{
+			//Returns a layer of the nabula_w vector, where:
+			//nabla_w[l][j][k] = activations[l - 1][j] * delta[l][k].
+			float[][] nabla_w_layer = new float [previous_activations.Length] [];
+			for (int j = 0; j < previous_activations.Length; j++)
+			{
+				float[] nabla_w_vector = new float[delta.Length];
+				for (int k = 0; k < delta.Length; k++)
+				{
+					nabla_w_vector [k] = previous_activations [j] * delta [k];
+				}
+				nabla_w_layer [j] = nabla_w_vector;
+			}
+			return nabla_w_layer;
 		}
 	}
 

@@ -2,18 +2,35 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Engine : MonoBehaviour {
+public class Engine : MonoBehaviour
+{
 
 	// Use this for initialization
 	void Start () {
 		//CreateConnect4AI ();
 		//Connect4AIMoves ();
 		//Connect4AILearns ();
-		int[] sizes = { 2, 3, 8, 4, 7, 6, 3 };
+		int[] sizes = { 3, 4, 5, 5, 5, 4, 4 };
 		Network myNetwork = new Network (sizes);
-		float[] a = { 1.2f, 2.3f };
-		float[] o = { 2.5f, 1.1f, 3.4f };
-		myNetwork.backprop (a, o);
+		float[] x = { 3.0f, 1.7f, 4.0f };
+		float[] output = myNetwork.feedforward (x);
+		Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
+		float[][][] miniBatch = new float[5][][];
+		for (int index = 0; index < 5; index++)
+		{
+			float[] x_batch = { 3.0f, 1.7f, 4.0f };
+			float[] y_batch = { 0.0f, 1.0f, 1.0f, 1.0f };
+			float[][] batches = new float[2][];
+			batches [0] = x_batch;
+			batches [1] = y_batch;
+			miniBatch[index] = batches;
+		}
+		for (int index = 0; index < 100; index++)
+		{
+			myNetwork.update_mini_batch (miniBatch, 0.15f);
+			output = myNetwork.feedforward (x);
+			Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
+		}
 	}
 	
 	// Update is called once per frame
@@ -84,6 +101,8 @@ public class Engine : MonoBehaviour {
 		//Identical matricies to store necessary information for back propagation.
 		public static float[][]		nabla_b;
 		public static float[][][]	nabla_w;
+		public static float[][]		nabla_b_total;
+		public static float[][][]	nabla_w_total;
 
 		/* * * * * * * * * * * * * * * * * * * * *
 		 *										 *
@@ -103,8 +122,8 @@ public class Engine : MonoBehaviour {
 			//2 neurons in first layer, 3 in second and 1 the final layer.
 			num_layers = networkSizes.Length;
 			sizes = networkSizes;
-			biases = generateBiases(1);
-			weights = generateWeights(1);
+			biases = generateBiases(0, 0.0f);
+			weights = generateWeights(0, 0.0f);
 		}
 
 		public float[][] generateNeurons (float value)
@@ -126,11 +145,11 @@ public class Engine : MonoBehaviour {
 			return n;
 		}
 
-		public float[][] generateBiases (int method)
+		public float[][] generateBiases (int method, float value)
 		{
 			//Returns a biases array.
-			//Method = 0: Returns a biases array of zeroes.
-			//Method = 1; Returns a biases array of random numbers in normal distribution.
+			//Method = 0: Returns a biases array of random numbers in normal distribution.
+			//Method = -1: Returns uniformed arraries of value indicated by value.
 			//Since the index of arraries starts at 0, biases starts at layer 2,
 			//Bias(Layer, Neuron) is represented as biases[Layer - 2][Neuron - 1].
 			float[][] b = new float[num_layers - 1][];
@@ -143,19 +162,19 @@ public class Engine : MonoBehaviour {
 						float[] b_layer = new float[nNeurons];
 						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
 						{
-							b_layer [neuronIndex] = 0;
+							b_layer [neuronIndex] = MathLibrary.randomGaussianDistributedNumber (0, 1);
 						}
 						b [layerIndex] = b_layer;
 					}
 					break;
-				case 1:
+				case -1:
 					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
 					{
 						int nNeurons = sizes [layerIndex + 1];
 						float[] b_layer = new float[nNeurons];
 						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
 						{
-							b_layer [neuronIndex] = MathLibrary.randomGaussianDistributedNumber (0, 1);
+							b_layer [neuronIndex] = value;
 						}
 						b [layerIndex] = b_layer;
 					}
@@ -164,11 +183,11 @@ public class Engine : MonoBehaviour {
 			return b;
 		}
 
-		public float[][][] generateWeights (int method)
+		public float[][][] generateWeights (int method, float value)
 		{
 			//Returns a weight array.
-			//Method = 0: Returns a weight array of zeroes.
-			//Method = 1; Returns a weight array of random numbers in normal distribution.
+			//Method = 0: Returns a weight array of random numbers in normal distribution.
+			//Method = -1: Returns uniformed arraries of value indicated by method.
 			//Since the index of arraries starts at 0, weights starts at layer 1,
 			//Weights(Layer (From), Neuron (From), Neuron (To)) is represented as weights[Layer (From) - 1][Neuron (From) - 1][Neuron (To) - 1].
 			float[][][] w = new float[num_layers - 1][][];
@@ -179,31 +198,31 @@ public class Engine : MonoBehaviour {
 					{
 						int nNeuronsThisLayer = sizes [layerIndex];
 						int nNeuronsNextLayer = sizes [layerIndex + 1];
-						float[][] w_layer = new float[sizes [layerIndex]][];
-						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
-						{
-							float[] weights_toNeurons = new float[nNeuronsNextLayer];
-							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
-							{
-								weights_toNeurons [toNeuronIndex] = 0;
-							}
-							w_layer [fromNeuronIndex] = weights_toNeurons;
-						}
-						w [layerIndex] = w_layer;
-					}
-					break;
-				case 1:
-					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
-					{
-						int nNeuronsThisLayer = sizes [layerIndex];
-						int nNeuronsNextLayer = sizes [layerIndex + 1];
-						float[][] w_layer = new float[sizes [layerIndex]][];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
 						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
 						{
 							float[] weights_toNeurons = new float[nNeuronsNextLayer];
 							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
 							{
 								weights_toNeurons [toNeuronIndex] = MathLibrary.randomGaussianDistributedNumber (0, 1);
+							}
+							w_layer [fromNeuronIndex] = weights_toNeurons;
+						}
+						w [layerIndex] = w_layer;
+					}
+					break;
+				case -1:
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeuronsThisLayer = sizes [layerIndex];
+						int nNeuronsNextLayer = sizes [layerIndex + 1];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
+						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
+						{
+							float[] weights_toNeurons = new float[nNeuronsNextLayer];
+							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
+							{
+								weights_toNeurons [toNeuronIndex] = value;
 							}
 							w_layer [fromNeuronIndex] = weights_toNeurons;
 						}
@@ -259,11 +278,35 @@ public class Engine : MonoBehaviour {
 		 *										 *
 		 * * * * * * * * * * * * * * * * * * * * */
 
+		public void update_mini_batch(float[][][] mini_batch, float eta)
+		{
+			//Update the network's weights and biases by applying gradient
+			//descent using backpropagation to a signle mini batch.
+			//The mini_batch is a list of x and y vectors represented as:
+			//x[i] = mini_batch[i][0] and y[i] = mini_batch[i][1].
+			//eta is the learning rate.
+			float[][] 	nabla_b_total = generateBiases (-1, 0.0f);
+			float[][][]	nabla_w_total = generateWeights (-1, 0.0f);
+			for (int index = 0; index < mini_batch.Length; index++)
+			{
+				backprop(mini_batch[index][0], mini_batch[index][1]);
+				nabla_b_total = operate_biases(nabla_b_total, nabla_b, 0);
+				nabla_w_total = operate_weights(nabla_w_total, nabla_w, 0);
+			}
+			float 		average_learning_rate = eta/mini_batch.Length;
+			float[][]	delta_biases = generateBiases (-1, average_learning_rate);
+			float[][][]	delta_weights = generateWeights (-1, average_learning_rate);
+			delta_biases = operate_biases(delta_biases, nabla_b_total, 2);
+			delta_weights = operate_weights(delta_weights, nabla_w_total, 2);
+			biases = operate_biases (biases, delta_biases, 1);
+			weights = operate_weights (weights, delta_weights, 1);
+		}
+
 		public void backprop (float[] x, float[] y)
 		{
-			//Modifies nabla_b and nabla_w to represent the gradient for the cost function C_x.
-			nabla_b = generateBiases (0);
-			nabla_w = generateWeights (0);
+			//Updates nabla_b and nabla_w to represent the gradient for the cost function C_x.
+			nabla_b = generateBiases (-1, 0.0f);
+			nabla_w = generateWeights (-1, 0.0f);
 			//Feedforward using a' = sigmoid(sigma(wa + b)),
 			//while keeping the activations for each layer.
 			float[][]	zs = new float[num_layers - 1][];		//List to store all the z vectors, layer by layer.			
@@ -342,7 +385,160 @@ public class Engine : MonoBehaviour {
 			}
 			return nabla_w_layer;
 		}
+
+		public float[][] operate_biases (float[][] biases1, float[][] biases2, int operation)
+		{
+			//0:Adds, 1:Subtracts, 3:Multiplies, 4:Divides bias1 by bias2.
+			//Return the result as b.
+			float[][] b = new float[num_layers - 1][];
+			switch(operation)
+			{
+				case(0):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeurons = sizes [layerIndex + 1];
+						float[] b_layer = new float[nNeurons];
+						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+						{
+							b_layer [neuronIndex] = biases1 [layerIndex] [neuronIndex] + biases2 [layerIndex] [neuronIndex];
+						}
+						b [layerIndex] = b_layer;
+					}
+					break;
+				case(1):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeurons = sizes [layerIndex + 1];
+						float[] b_layer = new float[nNeurons];
+						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+						{
+							b_layer [neuronIndex] = biases1 [layerIndex] [neuronIndex] - biases2 [layerIndex] [neuronIndex];
+						}
+						b [layerIndex] = b_layer;
+					}
+					break;
+				case(2):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeurons = sizes [layerIndex + 1];
+						float[] b_layer = new float[nNeurons];
+						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+						{
+							b_layer [neuronIndex] = biases1 [layerIndex] [neuronIndex] * biases2 [layerIndex] [neuronIndex];
+						}
+						b [layerIndex] = b_layer;
+					}
+					break;
+				case(3):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeurons = sizes [layerIndex + 1];
+						float[] b_layer = new float[nNeurons];
+						for (int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+						{
+							b_layer [neuronIndex] = biases1 [layerIndex] [neuronIndex] / biases2 [layerIndex] [neuronIndex];
+						}
+						b [layerIndex] = b_layer;
+					}
+					break;
+			}
+			return b;
+		}
+
+		public float[][][] operate_weights (float[][][] weights1, float[][][] weights2, int operation)
+		{
+			//0:Adds, 1:Subtracts, 3:Multiplies, 4:Divides weight1 by weight2.
+			//Return the result as w.
+			float[][][] w = new float[num_layers - 1][][];
+			switch (operation)
+			{
+				case(0):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeuronsThisLayer = sizes [layerIndex];
+						int nNeuronsNextLayer = sizes [layerIndex + 1];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
+						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
+						{
+							float[] weights_toNeurons = new float[nNeuronsNextLayer];
+							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
+							{
+								weights_toNeurons [toNeuronIndex] = weights1 [layerIndex] [fromNeuronIndex] [toNeuronIndex] + weights2 [layerIndex] [fromNeuronIndex] [toNeuronIndex];
+							}
+							w_layer [fromNeuronIndex] = weights_toNeurons;
+						}
+						w [layerIndex] = w_layer;
+					}
+					break;
+				case(1):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeuronsThisLayer = sizes [layerIndex];
+						int nNeuronsNextLayer = sizes [layerIndex + 1];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
+						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
+						{
+							float[] weights_toNeurons = new float[nNeuronsNextLayer];
+							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
+							{
+								weights_toNeurons [toNeuronIndex] = weights1 [layerIndex] [fromNeuronIndex] [toNeuronIndex] + weights2 [layerIndex] [fromNeuronIndex] [toNeuronIndex];
+							}
+							w_layer [fromNeuronIndex] = weights_toNeurons;
+						}
+						w [layerIndex] = w_layer;
+					}
+					break;
+				case(2):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeuronsThisLayer = sizes [layerIndex];
+						int nNeuronsNextLayer = sizes [layerIndex + 1];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
+						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
+						{
+							float[] weights_toNeurons = new float[nNeuronsNextLayer];
+							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
+							{
+								weights_toNeurons [toNeuronIndex] = weights1 [layerIndex] [fromNeuronIndex] [toNeuronIndex] + weights2 [layerIndex] [fromNeuronIndex] [toNeuronIndex];
+							}
+							w_layer [fromNeuronIndex] = weights_toNeurons;
+						}
+						w [layerIndex] = w_layer;
+					}
+					break;
+				case(3):
+					for (int layerIndex = 0; layerIndex < num_layers - 1; layerIndex++)
+					{
+						int nNeuronsThisLayer = sizes [layerIndex];
+						int nNeuronsNextLayer = sizes [layerIndex + 1];
+						float[][] w_layer = new float[nNeuronsThisLayer][];
+						for (int fromNeuronIndex = 0; fromNeuronIndex < nNeuronsThisLayer; fromNeuronIndex++)
+						{
+							float[] weights_toNeurons = new float[nNeuronsNextLayer];
+							for (int toNeuronIndex = 0; toNeuronIndex < nNeuronsNextLayer; toNeuronIndex++)
+							{
+								weights_toNeurons [toNeuronIndex] = weights1 [layerIndex] [fromNeuronIndex] [toNeuronIndex] + weights2 [layerIndex] [fromNeuronIndex] [toNeuronIndex];
+							}
+							w_layer [fromNeuronIndex] = weights_toNeurons;
+						}
+						w [layerIndex] = w_layer;
+					}
+					break;
+			}
+			return w;
+		}
+
 	}
+
+	/* * * * * * * * * * * * * * * * * * * * *
+	 *										 *
+	 *										 *
+	 *										 *
+	 *				Math Library			 *
+	 *										 *
+	 *										 *
+	 *										 *
+	 * * * * * * * * * * * * * * * * * * * * */
 
 	//Necessary math features that are not avaliable in Unity.
 
@@ -369,7 +565,7 @@ public class Engine : MonoBehaviour {
 		{
 			//Sigmoid, a smoothed out step function,
 			//is defined by 1/(1 + e^(-z)).
-			return 1.0f/(1.0f + Mathf.Exp (-z));
+			return 1.0f / (1.0f + Mathf.Exp (-z));
 		}
 
 		public static float sigmoid_prime (float z)
@@ -377,5 +573,4 @@ public class Engine : MonoBehaviour {
 			return sigmoid (z) * (1 - sigmoid (z));
 		}
 	}
-
 }

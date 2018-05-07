@@ -4,22 +4,21 @@ using UnityEngine;
 
 public class Engine : MonoBehaviour
 {
-
 	// Use this for initialization
 	void Start () {
 		//CreateConnect4AI ();
 		//Connect4AIMoves ();
 		//Connect4AILearns ();
-		int[] sizes = { 3, 4, 5, 5, 5, 4, 4 };
+		int[] sizes = { 3, 5, 2, 3, 4 };
 		Network myNetwork = new Network (sizes);
 		float[] x = { 3.0f, 1.7f, 4.0f };
 		float[] output = myNetwork.feedforward (x);
-		Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
+		//Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
 		float[][][] miniBatch = new float[5][][];
 		for (int index = 0; index < 5; index++)
 		{
-			float[] x_batch = { 3.0f, 1.7f, 4.0f };
-			float[] y_batch = { 0.0f, 1.0f, 1.0f, 1.0f };
+			float[] x_batch = { 1.0f, 0.0f, 1.0f };
+			float[] y_batch = { 5.0f, 5.0f, 0.0f, 5.0f };
 			float[][] batches = new float[2][];
 			batches [0] = x_batch;
 			batches [1] = y_batch;
@@ -29,7 +28,7 @@ public class Engine : MonoBehaviour
 		{
 			myNetwork.update_mini_batch (miniBatch, 0.15f);
 			output = myNetwork.feedforward (x);
-			Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
+			//Debug.Log ("O: " + output[0] + ", " + output[1] + ", " + output[2] + ", " + output[3]);
 		}
 	}
 	
@@ -56,6 +55,20 @@ public class Engine : MonoBehaviour
 	{
 		
 	}
+
+	/* * * * * * * * * * * * * * * * * * * * *
+	 *										 *
+	 *										 *
+	 *										 *
+	 *					Tutor				 *
+	 *										 *
+	 *										 *
+	 *										 *
+	 * * * * * * * * * * * * * * * * * * * * */
+
+	//A tutor that attempts to teach generate training sets for the Artificial Neural Network.
+
+
 
 	/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 	 *																										 *
@@ -528,6 +541,56 @@ public class Engine : MonoBehaviour
 			return w;
 		}
 
+		/* * * * * * * * * * * * * * * * * * * * *
+		 *										 *
+		 *										 *
+		 *										 *
+		 *				Accessories				 *
+		 *										 *
+		 *										 *
+		 *										 *
+		 * * * * * * * * * * * * * * * * * * * * */
+
+		public string structureToString (float[][] item)
+		{
+			//Converts structures similiar to a neural network to String.
+			string output = "Contains:\n";
+			int nLayers = item.Length;
+			for (int layerIndex = 0; layerIndex < nLayers; layerIndex++)
+			{
+				output += "Layer" + (layerIndex + 1) + ":\n";
+				int nNeurons = item [layerIndex].Length;
+				for(int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+				{
+					output += item [layerIndex] [neuronIndex] + "| ";
+				}
+				output += "\n";
+			}
+			return output;
+		}
+
+		public string structureToString (float[][][] item)
+		{
+			//Converts structures similiar to a weight matrix of the neural network to String.
+			string output = "Contains:\n";
+			int nLayers = item.Length;
+			for (int layerIndex = 0; layerIndex < nLayers; layerIndex++)
+			{
+				output += "Layer" + (layerIndex + 1) + ":\n";
+				int nNeurons = item [layerIndex].Length;
+				for(int neuronIndex = 0; neuronIndex < nNeurons; neuronIndex++)
+				{
+					int nNextNeurons = item [layerIndex] [neuronIndex].Length;
+					for (int nextNeuronIndex = 0; nextNeuronIndex < nNextNeurons; nextNeuronIndex++)
+					{
+						output += item [layerIndex] [neuronIndex] [nextNeuronIndex] + "| ";
+					}
+					output += "\n";
+				}
+				output += "\n";
+			}
+			return output;			
+		}
 	}
 
 	/* * * * * * * * * * * * * * * * * * * * *

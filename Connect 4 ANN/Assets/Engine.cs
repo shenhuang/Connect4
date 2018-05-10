@@ -121,6 +121,34 @@ public class Engine : MonoBehaviour
 		 *										 *
 		 *										 *
 		 *										 *
+		 *					Connect4			 *
+		 *										 *
+		 *										 *
+		 *										 *
+		 * * * * * * * * * * * * * * * * * * * * */
+		public int makeMove(float[] a)
+		{
+			//Outputs a column number with feedfoward,
+			//given a input of the network size.
+			float[] network_output = feedforward(a);
+			float max_output = float.MinValue;
+			int column_number = -1;
+			for (int index = 0; index < network_output.Length; index++)
+			{
+				if(network_output[index] > max_output)
+				{
+					max_output = network_output [index];
+					column_number = index;
+				}
+			}
+			return column_number;
+		}
+
+
+		/* * * * * * * * * * * * * * * * * * * * *
+		 *										 *
+		 *										 *
+		 *										 *
 		 *				Construction			 *
 		 *										 *
 		 *										 *

@@ -131,7 +131,7 @@ public class Engine : MonoBehaviour
 
 		public int makeMove(float[] board)
 		{
-			//Outputs a column number with feedfoward,
+			//Outputs a column number with feedforward,
 			//given a input of the network size.
 			float[] network_output = feedforward(a);
 			float max_output = float.MinValue;
@@ -156,6 +156,7 @@ public class Engine : MonoBehaviour
 			{
 				network_output [index] = 0;
 			}
+			network_output [column] = 1;
 			backprop (board, network_output);
 		}
 

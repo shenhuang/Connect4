@@ -147,7 +147,7 @@ public class Engine : MonoBehaviour
 			return column_number;
 		}
 
-		public void trainMove(float[] board, int column)
+		public void trainMove(float[] board, int column, float eta)
 		{
 			//Given a input of network size and the correct column to drop the piece,
 			//train the AI to make the corresponding move.
@@ -157,7 +157,10 @@ public class Engine : MonoBehaviour
 				network_output [index] = 0;
 			}
 			network_output [column] = 1;
-			backprop (board, network_output);
+			float[][][] miniBatch = new float[1][][];
+			miniBatch [0] [0] = board;
+			miniBatch [0] [1] = network_output;
+			update_mini_batch(miniBatch, eta);
 		}
 
 

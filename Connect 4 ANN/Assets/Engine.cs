@@ -66,7 +66,7 @@ public class Engine : MonoBehaviour
 	 *										 *
 	 * * * * * * * * * * * * * * * * * * * * */
 
-	//A tutor that attempts to teach generate training sets for the Artificial Neural Network.
+	//A tutor that attempts to generate training sets for the Artificial Neural Network.
 
 
 
@@ -121,11 +121,13 @@ public class Engine : MonoBehaviour
 		 *										 *
 		 *										 *
 		 *										 *
-		 *					Connect4			 *
+		 *				Connect4			 	 *
 		 *										 *
 		 *										 *
 		 *										 *
 		 * * * * * * * * * * * * * * * * * * * * */
+
+		//You will need to construct the neural network with Network (int[] networkSizes).
 
 		public int makeMove(float[] board)
 		{

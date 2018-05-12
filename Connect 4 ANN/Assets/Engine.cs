@@ -151,18 +151,19 @@ public class Engine : MonoBehaviour
 		{
 			//Given a input of network size and the correct column to drop the piece,
 			//train the AI to make the corresponding move.
-			float[] network_output = new float[sizes[0]];
-			for (int index = 0; index < sizes[0]; index++)
+			float[] network_output = new float[sizes[sizes.Length - 1]];
+			for (int index = 0; index < sizes[sizes.Length - 1]; index++)
 			{
 				network_output [index] = 0;
 			}
 			network_output [column] = 1;
-			float[][][] miniBatch = new float[1][][];
-			miniBatch [0] [0] = board;
-			miniBatch [0] [1] = network_output;
+			float[][][] miniBatch = new float [1][][];
+			float[][] batch = new float[2][];
+			batch[0] = board;
+			batch[1] = network_output;
+			miniBatch [0] = batch;
 			update_mini_batch(miniBatch, eta);
 		}
-
 
 		/* * * * * * * * * * * * * * * * * * * * *
 		 *										 *
